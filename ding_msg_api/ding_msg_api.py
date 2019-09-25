@@ -4,14 +4,7 @@ import re
 import json
 import requests
 
-ACCESS_TOKEN = None
-
-
-# 是否为电话号码
-def is_telephone_number(telephone):
-    rex = "^(13[0-9]|14[5|7]|15[0|1|2|3|5|6|7|8|9]|18[0|1|2|3|5|6|7|8|9])\d{8}$"
-    rp = re.compile(rex)
-    return rp.match(telephone)
+IS_TEST = False
 
 
 class BaseMsg(object):
@@ -24,7 +17,7 @@ class BaseMsg(object):
         self.at_all = at_all
 
     def add_at_user(self, telephone):
-        if is_telephone_number(telephone):
+        if self.is_telephone_number(telephone):
             self.at_users.append(telephone)
         else:
             raise Exception("telephone number is wrong")
@@ -47,6 +40,13 @@ class BaseMsg(object):
                 "atMobiles": self.at_users
             }
         return data
+
+    # 是否为电话号码
+    @staticmethod
+    def is_telephone_number(telephone):
+        rex = "^(13[0-9]|14[5|7]|15[0|1|2|3|5|6|7|8|9]|18[0|1|2|3|5|6|7|8|9])\d{8}$"
+        rp = re.compile(rex)
+        return rp.match(telephone)
 
 
 # 文本类型消息
@@ -80,11 +80,11 @@ class LinkMsg(TextMsg):
     def set_title(self, title):
         self.title = title
 
-    def set_picUrl(self, picUrl):
-        self.picUrl = picUrl
+    def set_picUrl(self, pic_url):
+        self.picUrl = pic_url
 
-    def set_messageUrl(self, messageUrl):
-        self.messageUrl = messageUrl
+    def set_messageUrl(self, message_url):
+        self.messageUrl = message_url
 
     def get_data(self):
         return {
@@ -130,17 +130,17 @@ class ActionCardMsg(TextMsg):
     def set_title(self, title):
         self.title = title
 
-    def set_hideAvatar(self, hideAvatar):
-        self.hideAvatar = hideAvatar
+    def set_hideAvatar(self, hide_avatar):
+        self.hideAvatar = hide_avatar
 
-    def set_btnOrientation(self, btnOrientation):
-        self.btnOrientation = btnOrientation
+    def set_btnOrientation(self, btn_orientation):
+        self.btnOrientation = btn_orientation
 
-    def set_singleTitle(self, singleTitle):
-        self.singleTitle = singleTitle
+    def set_singleTitle(self, single_title):
+        self.singleTitle = single_title
 
-    def set_singleURL(self, singleURL):
-        self.singleURL = singleURL
+    def set_singleURL(self, single_url):
+        self.singleURL = single_url
 
     def get_data(self):
         return {
@@ -162,11 +162,11 @@ class FeedCardMsg(BaseMsg):
         self.msg_type = "feedCard"
         self.links = []
 
-    def add_feed_link(self, title=None, messageURL=None, picUrl=None):
+    def add_feed_link(self, title=None, message_url=None, pic_url=None):
         self.links.append({
             "title": title,
-            "messageURL": messageURL,
-            "picURL": picUrl
+            "messageURL": message_url,
+            "picURL": pic_url
         })
 
     def get_data(self):
@@ -178,21 +178,25 @@ class FeedCardMsg(BaseMsg):
         }
 
 
-def __sendRealMsg(data=None, test=True):
-    if test:
-        # 仅打印数据
-        print json.dumps(data)
-        return None
-    else:
-        api = "https://oapi.dingtalk.com/robot/send?access_token=%s" % ACCESS_TOKEN
-        return requests.post(url=api, data=json.dumps(data), headers={
-            'Content-Type': 'application/json'
-        })
+class MsgClient(object):
+    def __init__(self, access_token, test=IS_TEST):
+        self.access_token = access_token
+        self.test = test
 
+    def __send_real_msg(self, data=None):
+        if self.test:
+            print json.dumps(data)
+            return None
+        else:
+            if not self.access_token:
+                raise Exception("You must set access_token before send message.")
+            api = "https://oapi.dingtalk.com/robot/send?access_token=%s" % self.access_token
+            return requests.post(url=api, data=json.dumps(data), headers={
+                'Content-Type': 'application/json'
+            })
 
-# 发送消息
-def sendMsg(baseMsg, test=True):
-    if isinstance(baseMsg, BaseMsg):
-        return __sendRealMsg(baseMsg.get_send_data(), test=test)
-    else:
-        raise Exception("not support msg")
+    def send_message(self, base_msg):
+        if isinstance(base_msg, BaseMsg):
+            return self.__send_real_msg(base_msg.get_send_data())
+        else:
+            raise Exception("not support msg")
