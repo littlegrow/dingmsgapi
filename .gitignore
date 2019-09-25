@@ -2,3 +2,4 @@
 build/
 dingmsgapi.egg-info/
 dist/
+*/*.pyc
